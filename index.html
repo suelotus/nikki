@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>奇迹暖暖·世界巡游进度</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
+  html, body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+    background: #f7f8fa; color: #1f1f1f; font-size: 14px; line-height: 1.4;
+    -webkit-font-smoothing: antialiased;
+    width: 100%; height: 100vh;
+    display: flex; flex-direction: column;
+    overflow: hidden; padding: 12px 8px 0;
+  }
+
+  .header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; padding: 0 4px; flex-shrink: 0; }
+  .header h1 { font-size: 17px; font-weight: 600; }
+  .header .sub { font-size: 11px; color: #8e8e93; }
+
+  .tabs { display: flex; gap: 6px; overflow-x: auto; padding: 0 0 10px; white-space: nowrap; -webkit-overflow-scrolling: touch; flex-shrink: 0; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { flex: 0 0 auto; border: none; border-radius: 16px; padding: 6px 12px; font-size: 12px; font-weight: 500; background: #fff; color: #4b4b4b; box-shadow: 0 1px 3px rgba(0,0,0,.04); white-space: nowrap; }
+  .tab.active { background: #ff2442; color: #fff; font-weight: 600; }
+
+  .table-card {
+    flex: 1; 
+    background: #fff; border-radius: 14px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.04);
+    overflow: auto; touch-action: pan-x pan-y; -webkit-overflow-scrolling: touch;
+    width: 100%; 
+    padding-bottom: 80px; 
+  }
+  
+  .flex-table { display: inline-flex; flex-direction: column; min-width: 100%; }
+  
+  .thead { 
+    display: flex; background: #fafafc; font-weight: 600; color: #6e6e73; font-size: 12px; 
+    border-bottom: 1px solid #efeff4; text-align: center; flex-shrink: 0; 
+  }
+  .th { 
+    border-right: 1px solid #efeff4; padding: 8px 0; display: flex; align-items: center; justify-content: center; 
+    flex-shrink: 0;
+  }
+  .th:last-child { border-right: none; }
+
+  .w-city { width: 13%; }
+  .w-spot { width: 22%; }
+  .w-event { width: 28%; }
+  .w-sticker { width: 15%; }
+  .w-day, .w-dusk, .w-night { width: 6%; }
+  .w-weather { width: 10%; }
+
+  .tbody { display: flex; flex-direction: column; }
+  .tr-row { display: flex; border-bottom: 1px solid #efeff4; align-items: stretch; }
+  .tr-row:last-child { border-bottom: none; }
+
+  .td { 
+    border-right: 1px solid #efeff4; 
+    padding: 10px 4px; 
+    text-align: center; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    font-size: 12px; 
+    line-height: 1.3; 
+    word-break: break-word; 
+    min-height: 44px;
+    flex-shrink: 0;
+  }
+  .td:last-child { border-right: none; }
+
+  .col-group { display: flex; flex-direction: column; border-right: 1px solid #efeff4; flex-shrink: 0; }
+  .col-group .td { border-right: none; flex: 1; min-height: 44px; }
+  .col-group .td:last-child { border-bottom: none; }
+
+  .empty-cell { color: transparent; }
+
+  .markable { cursor: pointer; -webkit-user-select: none; user-select: none; }
+  .markable:active { background: #fff0f2; }
+  .done { background: #e8f8ec !important; color: #2e7d32 !important; }
+  .done.event-cell { text-decoration: line-through; text-decoration-color: #81c784; }
+  .selected { background: #fff3e0 !important; box-shadow: inset 0 0 0 2px #ff9800; }
+  .done.selected { background: #dff3e4 !important; box-shadow: inset 0 0 0 2px #43a047; }
+
+  .action-bar {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    background: rgba(255,255,255,.96); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    padding: 10px 14px calc(12px + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -2px 16px rgba(0,0,0,.06);
+    display: flex; align-items: center; gap: 6px; z-index: 20; border-top: 1px solid rgba(0,0,0,.04);
+  }
+  .progress-text { font-size: 12px; color: #6e6e73; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .progress-text b { color: #ff2442; font-size: 15px; font-weight: 700; }
+  
+  .action-bar button { border: none; border-radius: 20px; padding: 9px 10px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; line-height: 1.2; }
+  #btnDone { background: #2e9d52; color: #fff; }
+  #btnDone:disabled { background: #c8e6c9; color: #fff; box-shadow: none; }
+  #btnUndone { background: #fff; color: #6e6e73; box-shadow: inset 0 0 0 1px #e5e5ea; }
+  #btnUndone:disabled { color: #c7c7cc; box-shadow: inset 0 0 0 1px #f0f0f0; }
+  #btnReset { background: #fff; color: #999; box-shadow: inset 0 0 0 1px #e5e5ea; }
+  #btnSave { background: #fff; color: #1677ff; box-shadow: inset 0 0 0 1px #1677ff; }
+  /* 新增的存档按钮样式 */
+  #btnCode { background: #fff; color: #ff9800; box-shadow: inset 0 0 0 1px #ff9800; }
+
+  #imgOverlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); 
+    z-index: 999; flex-direction: column; align-items: center; justify-content: center;
+    padding: 20px; opacity: 0; transition: opacity 0.2s;
+  }
+  #imgOverlay.show { display: flex; opacity: 1; }
+  #imgPreview {
+    max-width: 100%; max-height: 80vh; border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5); background: #fff;
+    -webkit-touch-callout: default; user-select: auto; -webkit-user-select: auto;
+  }
+  .img-tip { color: #fff; font-size: 14px; margin-top: 16px; text-align: center; }
+  .img-close { color: #ccc; font-size: 13px; margin-top: 8px; text-decoration: underline; padding: 10px; }
+
+  #codeOverlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); 
+    z-index: 1000; align-items: center; justify-content: center; padding: 20px;
+  }
+  #codeOverlay.show { display: flex; }
+  .code-box {
+    background: #fff; border-radius: 14px; width: 100%; max-width: 400px;
+    padding: 20px; display: flex; flex-direction: column; gap: 12px;
+  }
+  .code-box h3 { font-size: 16px; text-align: center; color: #333; margin-bottom: 4px; }
+  .code-box textarea {
+    width: 100%; height: 100px; border: 1px solid #ddd; border-radius: 8px;
+    padding: 8px; font-size: 12px; resize: none; background: #fafafa; color: #333;
+  }
+  .code-actions { display: flex; gap: 10px; }
+  .code-actions button {
+    flex: 1; padding: 10px 0; border: none; border-radius: 8px;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  #btnCopyCode { background: #1677ff; color: #fff; }
+  #btnPasteCode { background: #2e9d52; color: #fff; }
+  #btnCloseCode { background: #f0f0f0; color: #666; margin-top: 4px; }
+</style>
+</head>
+<body>
+  <div class="header"><h1>🧳 世界巡游</h1><span class="sub">点格子标记完成</span></div>
+  <div class="tabs">
+    <span class="tab active">苹果</span><span class="tab">云端</span><span class="tab">莉莉斯</span>
+    <span class="tab">信鸽</span><span class="tab">北地</span><span class="tab">荒原</span>
+  </div>
+  
+  <div class="table-card" id="tableCard">
+    <div class="flex-table">
+      <div class="thead">
+        <div class="th w-city">城市</div>
+        <div class="th w-spot">景点</div>
+        <div class="th w-event">事件</div>
+        <div class="th w-sticker">贴纸</div>
+        <div class="th w-day">昼</div>
+        <div class="th w-dusk">暮</div>
+        <div class="th w-night">夜</div>
+        <div class="th w-weather">天气</div>
+      </div>
+      <div class="tbody" id="tourBody"></div>
+    </div>
+  </div>
+
+  <div class="action-bar">
+    <div class="progress-text" id="progressText">当前国家：<b>0</b> / 0 项</div>
+    <button id="btnCode">🔑 存档</button> <!-- 新增按钮 -->
+    <button id="btnSave">📷 存图</button>
+    <button id="btnDone" disabled>✅ 完成</button>
+    <button id="btnUndone" disabled>↩️ 取消</button>
+    <button id="btnReset">重置</button>
+  </div>
+
+  <div id="imgOverlay">
+    <img id="imgPreview" src="" alt="进度截图">
+    <div class="img-tip">请长按上方图片保存到手机</div>
+    <div class="img-close" id="imgClose">关闭</div>
+  </div>
+
+  <div id="codeOverlay">
+    <div class="code-box">
+      <h3>存档码 (数据备份)</h3>
+      <textarea id="saveCodeInput" placeholder="在这里粘贴存档码，然后点击下方【导入存档】；或者点击【复制存档码】保存你的进度。"></textarea>
+      <div class="code-actions">
+        <button id="btnCopyCode">复制存档码</button>
+        <button id="btnPasteCode">导入存档</button>
+      </div>
+      <button id="btnCloseCode">关闭</button>
+    </div>
+  </div>
+
+<script src="./tour.js"></script>
+</body>
+</html>
